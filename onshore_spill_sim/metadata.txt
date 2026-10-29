@@ -1,0 +1,21 @@
+[general]
+name=Onshore Spill Simulator
+qgisMinimumVersion=3.16
+description=Simulates onshore oil spills and H2S dispersion with map animations.
+about=Onshore Spill Simulator routes spilled oil over the terrain of a DEM and through the drainage network, cell by cell and minute by minute. It models the pool at the source (cellar or bund first), well spillage spray falling downwind as droplets, gravity flow on the oil free surface with ponding and spill-over, surface retention by vegetation, infiltration into the soil (Green-Ampt scaled for oil), evaporation (Fingas equations) with the rise in viscosity, rainstorm wash-off, and transport down flowing streams with bank stranding. It reports arrival times at towns, water points, dugouts, health facilities and other receptors, the mass balance, the oil penetration against the depth to groundwater, and writes GeoTIFF time series, a GeoPackage of footprints and isochrones, CSV/Excel tables, a GIF/MP4 animation rendered from the visible project layers and a stand-alone HTML animation player. Version 2 adds an energy balance for the oil (sun, air, wind, ground) with temperature-dependent density, viscosity and yield stress so that waxy oil gels at night and moves again by day, roughness zones, barriers, recovery points and several sources; a Gaussian puff model for H2S from a gas leakage at a well with AEGL, IDLH and 500 ppm zones and receptor exposure; and a map tool to place a tanker anywhere and run it with one click. Climate defaults (Tamale normals and the DGLE monthly winds) cover the northern Voltaian Basin, Ghana.
+version=2.1.1
+author=Donald Annor Appiah
+email=Donaldannorgames@gmail.com
+repository=https://github.com/Donnai/onshore-spill-simulator
+homepage=https://github.com/Donnai/onshore-spill-simulator
+tracker=https://github.com/Donnai/onshore-spill-simulator/issues
+category=Raster
+tags=oil spill,H2S,heat transfer,emergency response,HSE,drilling,well control,hydrology,simulation,animation,Voltaian
+experimental=False
+deprecated=False
+hasProcessingProvider=True
+icon=icon.png
+changelog=2.1.1 Packaging and metadata maintenance: exclude Python caches and compiled bytecode from release archives; use a documented category and canonical Processing-provider flag; add public source links; generalize help and one interface label for public distribution. Model calculations are unchanged.
+ 2.1.0 Simulation panel docked in QGIS: date-driven season and weather, typical storms, background runs, animation player on the map canvas with per-frame subtitles, settlements table and digitising tool; subtitles in the GIF/MP4 and HTML; HTML basemaps (Esri imagery and hybrid, CARTO OpenStreetMap, Esri street, topographic and hillshade) and DEM relief shading; multidirectional relief shading.
+ 2.0.0 Heat transfer and temperature-dependent rheology (Bingham film), roughness zones, barriers, recovery points, several sources; H2S Gaussian puff model; movable tanker map tool and tanker-layer algorithm; HTML extra layers, scenario switcher, H2S receptor badges and sandbox path tracer.
+ 1.0.0 First release.

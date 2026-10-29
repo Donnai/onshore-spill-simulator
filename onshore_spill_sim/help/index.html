@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onshore Spill Simulator - Method and User Guide</title>
+<style>
+:root{--ink:#14211b;--muted:#5b6b63;--line:#d9e0dc;--brand:#0b5d3b;--gold:#c9a227;--bg:#ffffff;--chip:#f3f6f4}
+body{margin:0;font-family:"Segoe UI",Calibri,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+header{background:var(--brand);color:#fff;padding:22px 28px;border-bottom:4px solid var(--gold)}
+header h1{margin:0;font-size:24px}
+header p{margin:4px 0 0;opacity:.9}
+main{max-width:1000px;margin:0 auto;padding:10px 24px 60px}
+h2{color:var(--brand);border-bottom:1px solid var(--line);padding-bottom:4px;margin-top:34px}
+h3{margin-top:22px}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--chip)}
+code,.eq{font-family:Consolas,"Courier New",monospace;background:var(--chip);padding:1px 4px;border-radius:3px}
+.eq{display:block;padding:8px 12px;margin:8px 0}
+.note{background:#fff8e1;border-left:4px solid var(--gold);padding:8px 12px;margin:12px 0}
+nav{background:var(--chip);padding:10px 16px;border-radius:6px;margin-top:16px}
+nav a{margin-right:14px;color:var(--brand)}
+ol li,ul li{margin:3px 0}
+</style>
+</head>
+<body>
+<header>
+ <h1>Onshore Spill Simulator</h1>
+ <p>Method and user guide - QGIS plugin, version 2.1.1 - Donald Annor Appiah</p>
+</header>
+<main>
+<nav><a href="#purpose">Purpose</a><a href="#build">How the model is built</a><a href="#eq">Equations</a>
+<a href="#heat">Heat transfer</a><a href="#h2s">H2S</a><a href="#tanker">Movable tanker</a>
+<a href="#params">Parameters</a><a href="#run">Running the plugin</a><a href="#out">Outputs</a>
+<a href="#use">Using the results</a><a href="#limits">Limitations</a><a href="#refs">References</a></nav>
+
+<h2 id="purpose">1. Purpose</h2>
+<p>The plugin simulates what happens to oil or fuel released on land during an onshore drilling campaign:
+where it flows, how far and how fast it travels, how much evaporates, how much soaks into the ground,
+whether it reaches the drainage network, and which communities, water points and facilities it reaches
+and when. Inputs are supplied as QGIS layers and parameters. Applications at an onshore site require
+a suitable DEM and independently checked release, surface, weather and receptor inputs.</p>
+<p>Version 2 adds the features of temperature-dependent overland oil models such as OilFlow2D (heat transfer
+between the oil, the sun, the air and the ground; temperature-dependent density, viscosity and yield stress;
+roughness zones; barriers; recovery points and free-outflow cells; several sources), a hydrogen sulphide (H2S)
+dispersion model for sour-gas leakages, and a movable tanker that can be placed anywhere on the map and run with
+one click.</p>
+<p>The results are intended for emergency response planning: sizing spill-response equipment and
+response times, placing containment, siting water-supply boreholes and camp facilities, briefing
+communities, and preparing the oil spill contingency section of the ERP and the ESIA. They are a
+screening simulation, not a forecast of a particular event.</p>
+
+<h2 id="build">2. How the model is built</h2>
+<p>The model was developed in nine steps. Each step corresponds to a module of the plugin
+(<code>engine/</code> folder), so the method can be checked and changed step by step.</p>
+<table>
+<tr><th>Step</th><th>What is done</th><th>Module</th></tr>
+<tr><td>1. Terrain</td><td>A square window of the DEM is read around the spill point (default 9 km half-width plus a 6 km margin
+so that catchments are complete). The DEM is lightly smoothed (Gaussian, 1 cell) to remove radar and canopy speckle.
+Mapped rivers and streams are burned 3 m into the DEM so that the flow paths follow them.</td><td>terrain.py</td></tr>
+<tr><td>2. Depressions and flow paths</td><td>Depressions are filled with the priority-flood algorithm (Barnes et al., 2014).
+Depressions shallower than the tolerance (3 m for a 30 m global DEM, 0.2-0.5 m for a survey DTM) are treated as DEM
+noise; deeper ones are kept as real ponds that oil must fill before it spills over. D8 flow directions and flow
+accumulation give the catchment area of every cell.</td><td>terrain.py</td></tr>
+<tr><td>3. Drainage network</td><td>Cells draining more than 1 km<sup>2</sup> are streams. Each month has a stream flow per km<sup>2</sup>
+of catchment: in the dry season (November-April) stream beds are dry and behave as sandy ground; in the wet season the
+streams carry water and the oil floats on it.</td><td>terrain.py, climate.py</td></tr>
+<tr><td>4. Ground surface</td><td>Every cell is given a surface class from the layers supplied: savannah and farmland (default),
+compacted rig pad, laterite road, dry stream bed, open water (dugouts and ponds), lined or bunded area, woodland.
+The class sets roughness, surface retention and soil properties (Table 5.2). Site-plan polygons are classified from their
+names (pad, laterite, bund, pit, cellar ...).</td><td>surfaces.py</td></tr>
+<tr><td>5. Release</td><td>Three release types: well oil spillage (rate x duration; a share of the flow is atomised and falls downwind
+as droplets, the rest fills the cellar and overflows onto the pad); tank or bund failure and road tanker (fixed volume over
+a few minutes); continuous leak (flowline, hose). A volume can be held in the cellar or an intact bund before overflow.</td><td>model.py, fallout.py</td></tr>
+<tr><td>6. Weather</td><td>Hourly wind is built from the monthly vector-mean wind at Tamale (DGLE) with a diurnal cycle and a
+meandering direction whose spread follows the wind steadiness. Ground temperature follows the monthly normal. Storms are
+given as start time, duration and depth; runoff is computed with the SCS curve number.</td><td>climate.py, fallout.py</td></tr>
+<tr><td>7. Fate and transport</td><td>Every time step (1-60 s, limited by the Courant number) the model adds the release, evaporates,
+infiltrates and then moves the mobile oil (Section 3).</td><td>model.py</td></tr>
+<tr><td>8. Receptors and bookkeeping</td><td>At each frame the model records the thickness map, the spray deposit and the mass balance.
+Each receptor (town, water point, health facility, dugout, forest reserve...) receives the first time oil of 0.1 mm or more
+lies within 60 m of it, the maximum thickness and spray deposit, the oil soaked into the ground and the depth reached by the
+oil front compared with the depth to groundwater.</td><td>model.py, receptors.py</td></tr>
+<tr><td>9. Outputs</td><td>GeoTIFFs, GeoPackage, tables, the interactive HTML player and the GIF/MP4 animation drawn from the
+project layers (Section 6).</td><td>outputs.py, html_export.py, qgis_anim.py</td></tr>
+</table>
+
+<h2 id="eq">3. Process equations</h2>
+<h3>3.1 Overland flow</h3>
+<p>Oil moves from a cell to its lower neighbours according to the slope of the oil free surface
+<code>&eta; = z + h</code> (ground plus oil), so oil fills hollows and spills over their lowest side. The outflow is shared
+among the downhill neighbours in proportion to <code>(&Delta;&eta;/d)^1.1</code> (multiple flow direction, Freeman, 1991).
+Only the depth above the surface retention depth <code>h<sub>r</sub></code> can move. Its speed is the lesser of the
+viscous thin-film (gravity-current) speed (Huppert, 1982) and the Manning speed:</p>
+<span class="eq">u = min( &rho; g h<sub>m</sub><sup>2</sup> S / (3 &mu;) ,  h<sub>m</sub><sup>2/3</sup> S<sup>1/2</sup> / n ),  h<sub>m</sub> = max(h - h<sub>r</sub>, 0)</span>
+<p>where &rho; and &mu; are the oil density and viscosity, S the free-surface slope and n the Manning roughness (Engman, 1986).
+On sloping natural ground the oil runs in narrow threads, so only the rivulet width (default 6 m of a 30 m cell) holds
+retained oil and soaks it up; on flat ground and on pads the whole cell is wetted.</p>
+<h3>3.2 Evaporation</h3>
+<p>Fingas (2004) generic equations (t in minutes, T in &deg;C, %D = mass % distilled at 180 &deg;C):</p>
+<span class="eq">crude oils:  %Ev = [0.165 (%D) + 0.045 (T - 15)] ln(t)<br>diesel and light products:  %Ev = [0.0254 (%D) + 0.01 (T - 15)] &radic;t</span>
+<p>The equations are applied cell by cell with the pseudo-time method, so parcels of different age that mix are weighted
+by mass. Evaporation stops at the product's evaporable limit. Viscosity rises with the evaporated fraction
+F<sub>e</sub>: <code>&mu; = &mu;<sub>0</sub> exp(C F<sub>e</sub>)</code> (Mackay et al., 1980), C = 10 for crude oils and
+1 for distillates. In heat-transfer mode the evaporation coefficient is evaluated with the local oil temperature,
+so warm oil evaporates faster (Section 3.7).</p>
+<h3>3.3 Infiltration and groundwater</h3>
+<p>Green-Ampt infiltration (Green and Ampt, 1911) with parameters for oil: the hydraulic conductivity is scaled by
+<code>(&rho;<sub>o</sub>/&rho;<sub>w</sub>)(&mu;<sub>w</sub>/&mu;<sub>o</sub>)</code> and reduced by the water already in the pores;
+the capillary suction is scaled by the ratio of surface tensions (about 0.4, Leverett scaling). The depth reached by the
+oil front is the infiltrated volume divided by the oil the soil can retain, <code>S<sub>or</sub> &phi;</code>
+(default 0.10 x porosity, i.e. about 40 L/m<sup>3</sup> for silty soils, consistent with CONCAWE 3/79). Where this depth
+reaches the depth to groundwater the cell is flagged.</p>
+<h3>3.4 Well spray ("oil rain")</h3>
+<p>Droplets (log-normal, median 250 &micro;m) are released at an effective height H (default 40 m: derrick height plus jet rise),
+carried at the wind speed at that height (power law, exponent 0.14) and settle at their terminal velocity
+(Atlas et al., 1973 for drops above 0.1 mm, Stokes law below). Each size lands at <code>x = u(H) H / v<sub>t</sub></code>
+downwind, spread by the wind meander and by the range of release heights. The deposit is recomputed every hour as
+the wind changes.</p>
+<h3>3.5 Rain wash-off</h3>
+<p>Storm runoff is calculated with the SCS curve number (USDA-NRCS, 1986). While runoff lasts, half of the retention depth
+is flushed and the oil is carried at half of the kinematic sheet-flow speed of the runoff, which grows with the upstream
+catchment area. Stream discharge also rises with the storm.</p>
+<h3>3.6 Streams</h3>
+<p>In a flowing stream the oil floats and moves down the D8 path at the surface speed of the water,
+<code>u = 1.1 &times; 0.7 Q<sup>0.1</sup></code> (hydraulic geometry, Leopold and Maddock, 1953), where Q is the stream
+discharge. Oil is lost to the banks at an exponential rate (default 15% per km) and stays there as stranded oil, where it
+continues to weather. Oil that reaches the edge of the model area is counted as having left it.</p>
+
+<h3 id="heat">3.7 Heat transfer and temperature-dependent rheology (OilFlow2D-type)</h3>
+<p>With <b>Heat-transfer mode</b> ticked, every cell carries an oil temperature T as well as a thickness. Heat moves with the
+oil (the heat content <code>h T</code> is transported with the volume), and each time step the temperature of the layer is
+advanced with the energy balance used by temperature-dependent overland oil models (Garcia et al., 2023;
+Echeverribar et al., 2023):</p>
+<span class="eq">&rho; c<sub>p</sub> h dT/dt = (1 - a) S + &epsilon; &sigma; (&epsilon;<sub>a</sub> T<sub>a</sub><sup>4</sup> - T<sup>4</sup>) - h<sub>c</sub> (T - T<sub>a</sub>) - h<sub>g</sub> (T - T<sub>g</sub>)</span>
+<ul>
+<li><b>S</b> - global solar radiation on a horizontal surface: clear-sky value (Haurwitz, 1945) from the sun's elevation for the
+site latitude, date and hour, reduced for cloud and harmattan haze (Kasten and Czeplak, 1980). Albedo of oil a = 0.05.</li>
+<li><b>Long-wave exchange</b> - oil emissivity &epsilon; = 0.95; sky emissivity &epsilon;<sub>a</sub> from air temperature and
+humidity (Brutsaert, 1975), raised for cloud.</li>
+<li><b>Convection</b> - <code>h<sub>c</sub> = 5.7 + 3.8 U</code> W/m<sup>2</sup>K with the hourly wind U (Watmuff et al., 1977);
+strong wind cools the oil and shortens its runout.</li>
+<li><b>Ground conduction</b> - h<sub>g</sub> = 10 W/m<sup>2</sup>K to a ground surface at the mean air temperature plus 2 &deg;C.</li>
+<li><b>Air temperature</b> follows a daily cycle between the monthly mean minimum and maximum (minimum near 03:00, maximum
+near 15:00); relative humidity and cloud follow the month.</li>
+<li><b>Source temperature</b> - the oil leaves the wellhead or tank at the given temperature (e.g. 60 &deg;C for produced fluid);
+spray droplets reach air temperature before they land.</li>
+</ul>
+<p>The balance is linearised about the current temperature and integrated exactly over the step, so it is stable for any
+thickness. The oil properties then follow the temperature:</p>
+<span class="eq">density:  &rho;(T) = &rho;<sub>ref</sub> + k<sub>&rho;</sub> (T - T<sub>ref</sub>)   (k<sub>&rho;</sub> about -0.65 kg/m<sup>3</sup>K)<br>
+viscosity:  &mu;(T, F<sub>e</sub>) = &mu;<sub>ref</sub> exp[B (1/T - 1/T<sub>ref</sub>)] exp(C F<sub>e</sub>)   (Andrade form x Mackay weathering)<br>
+yield stress:  &tau;<sub>y</sub>(T) = &tau;<sub>pp</sub> 10<sup>(T<sub>pp</sub> - T)/&Delta;T<sub>10</sub></sup>   (zero above T<sub>pp</sub> + 2&Delta;T<sub>10</sub>)</span>
+<p>The oil moves as a Bingham film: where the driving stress <code>&tau;<sub>b</sub> = &rho; g h<sub>m</sub> S</code> is below
+the yield stress it does not move; above it the laminar speed is reduced by <code>1 - 1.5 r + 0.5 r<sup>3</sup></code>,
+<code>r = &tau;<sub>y</sub>/&tau;<sub>b</sub></code>. A waxy crude therefore spreads while hot, gels as it cools at night,
+and moves again when the afternoon sun warms it - the behaviour shown by OilFlow2D for high pour point oils. In flowing
+streams gelled oil is carried as floating lumps. With heat transfer off, the properties are fixed at the mean air
+temperature (constant-property mode, as in the basic OilFlow2D module).</p>
+<h3>3.8 Control features</h3>
+<ul>
+<li><b>Roughness zones</b> - polygons whose Manning n replaces the surface-class value (a field <code>manning_n</code> or one value
+for the layer): crops, dense grass, gravel, paving.</li>
+<li><b>Barriers</b> - lines or polygons (earth berms, bund walls, sandbag lines, road embankments) raised by the given height on the
+flow surface. Oil ponds behind them and overtops when it is deeper than the barrier.</li>
+<li><b>Recovery points and free-outflow cells</b> - points, lines or polygons where oil is removed (sump, interceptor trench,
+skimming point, culvert outlet); the volume is reported as <i>recovered</i> in the mass balance.</li>
+<li><b>Several sources</b> - additional point releases with their own volume, start time, duration and temperature
+(configuration key <code>extra_sources</code>).</li>
+</ul>
+<h3 id="h2s">3.9 H2S dispersion from a sour-gas leakage</h3>
+<p>The gas phase of a well spillage is modelled separately with a Gaussian puff model (<code>engine/h2s.py</code>).</p>
+<ul>
+<li><b>Source</b> - gas rate G (MMscf/d at 60 &deg;F) and H2S content x (ppm by volume) give the H2S mass rate
+<code>q = G 10<sup>6</sup> 0.0283 / 86400 x P/(R T<sub>s</sub>) x 34.08</code> g/s. Two release modes: a free vertical jet from the
+rig floor (plume rise from momentum and buoyancy, Briggs, 1975, 1984) or an impinged leak, where the jet is stopped by the
+substructure or BOP stack and the gas spreads from a low height with no plume rise (the conservative case, used for the
+reference runs). A mixture heavier than air is flagged, because a passive Gaussian model is then not conservative near the source.</li>
+<li><b>Transport</b> - puffs are released every 90 s and carried by the hourly wind at plume height (power-law profile), turning
+smoothly as the wind veers; each puff is spread along the path to the next puff so the plume is continuous.</li>
+<li><b>Spread</b> - Pasquill-Gifford stability class from wind speed, sun elevation and cloud (Turner, 1964); Briggs (1973)
+open-country dispersion curves; reflection at the ground and at the top of the mixed layer (150 m on stable nights to 1,500 m on
+unstable afternoons); the plume height is reduced by half the rise of the ground above the wellhead.</li>
+<li><b>Concentration</b> - ground-level 10-minute means, converted to ppm at 25 &deg;C; 60-minute means are running hourly averages.</li>
+<li><b>Thresholds</b> - EPA Acute Exposure Guideline Levels for H2S (60 min): AEGL-1 0.51 ppm (odour, discomfort), AEGL-2 27 ppm
+(irreversible or escape-impairing effects), AEGL-3 50 ppm (life-threatening); NIOSH IDLH 100 ppm; 500 ppm (rapid loss of
+consciousness). AEGL zones use the highest 60-minute mean; IDLH and 500 ppm zones use the highest 10-minute mean. The 10-minute
+AEGLs (0.75, 41 and 76 ppm) are higher, so the 60-minute values are the stricter test.</li>
+<li><b>Outputs</b> - H2S time series and worst 10-min / 60-min rasters, time at which AEGL-2 is first exceeded, threshold zones with
+their furthest reach, the planned H2S zone for comparison, receptor exposure (worst class, first time above AEGL-1/2/3 and IDLH),
+HTML player and GIF/MP4.</li>
+</ul>
+<p class="note">Not modelled: ignition of the release (an ignited leak burns H2S to SO2), dense-gas slumping, building and
+rig-structure wakes, and calm winds below 1 m/s.</p>
+
+<h2 id="params">4. Default parameters</h2>
+<h3>4.1 Products (oils.py)</h3>
+<table>
+<tr><th>Product</th><th>Density (kg/m<sup>3</sup>)</th><th>Viscosity (mPa.s)</th><th>Pour point (&deg;C)</th><th>%D at 180 &deg;C</th><th>Max evaporation</th></tr>
+<tr><td>Light crude (API ~35)</td><td>850</td><td>8</td><td>-9</td><td>25 (ln)</td><td>40%</td></tr>
+<tr><td>Waxy crude (API ~32, sensitivity case)</td><td>860</td><td>12 at 40 &deg;C</td><td>27</td><td>18 (ln)</td><td>30%</td></tr>
+<tr><td>Medium crude (API ~25)</td><td>900</td><td>60</td><td>-3</td><td>15 (ln)</td><td>28%</td></tr>
+<tr><td>Heavy / waxy crude (API ~18)</td><td>950</td><td>1500</td><td>24</td><td>4 (ln)</td><td>10%</td></tr>
+<tr><td>Gas condensate (API ~50)</td><td>780</td><td>1</td><td>-30</td><td>55 (ln)</td><td>80%</td></tr>
+<tr><td>Rig diesel (AGO)</td><td>840</td><td>3.5</td><td>-15</td><td>10 (sqrt)</td><td>60%</td></tr>
+<tr><td>Mineral base oil (OBM)</td><td>800</td><td>2.5</td><td>-20</td><td>2 (sqrt)</td><td>20%</td></tr>
+</table>
+<p>Temperature dependence (all products): Andrade constant B 1,500-6,500 K, density change -0.65 kg/m<sup>3</sup> per &deg;C,
+specific heat 2,000 J/kgK, yield stress 1-5 Pa at the pour point rising tenfold every 4-5 &deg;C of cooling.</p>
+<p class="note">These are generic product-class defaults, not measurements of a particular reservoir fluid.
+Replace the values with suitable product assay data when available.</p>
+<h3>4.2 Surface classes (model.py)</h3>
+<table>
+<tr><th>Class</th><th>Manning n</th><th>Retention (mm)</th><th>K<sub>water</sub> (m/s)</th><th>Suction (m)</th><th>Porosity</th></tr>
+<tr><td>Savannah / farmland</td><td>0.25</td><td>6</td><td>2 x 10<sup>-6</sup></td><td>0.11</td><td>0.40</td></tr>
+<tr><td>Rig pad (compacted laterite)</td><td>0.03</td><td>2</td><td>1 x 10<sup>-7</sup></td><td>0.21</td><td>0.30</td></tr>
+<tr><td>Laterite road</td><td>0.03</td><td>2</td><td>2 x 10<sup>-7</sup></td><td>0.21</td><td>0.30</td></tr>
+<tr><td>Stream bed (dry)</td><td>0.05</td><td>3</td><td>1 x 10<sup>-5</sup></td><td>0.05</td><td>0.38</td></tr>
+<tr><td>Open water</td><td>0.02</td><td>0</td><td>0</td><td>-</td><td>-</td></tr>
+<tr><td>Lined / bunded area</td><td>0.02</td><td>1</td><td>0</td><td>-</td><td>-</td></tr>
+<tr><td>Woodland / forest reserve</td><td>0.40</td><td>10</td><td>5 x 10<sup>-6</sup></td><td>0.09</td><td>0.45</td></tr>
+</table>
+<p>Soil suction values follow Rawls et al. (1983) for sandy loam to clay loam; retention depths are indicative holding capacities of 2-10 L/m<sup>2</sup> for compacted to vegetated ground.</p>
+<h3>4.3 Monthly climate defaults (climate.py)</h3>
+<p>Rainfall and temperature: Tamale 1991-2020 normals (annual rainfall 1,074 mm, wettest September, driest December-January).
+Wind: Tamale (DGLE) monthly vector means 1973-2026 (Harmattan from the north-east in December-February, south-westerly
+monsoon from April to October). Stream flow, soil wetness and depth to groundwater follow the season; they are indicative
+and should be replaced with appropriate gauge, soil-moisture and borehole data for the study area.</p>
+
+<h2 id="run">5. Running the plugin</h2>
+<ol>
+<li>Install: <b>Plugins &gt; Manage and Install Plugins &gt; Install from ZIP</b>, choose
+<code>onshore_spill_sim.zip</code>. The tool appears under <b>Plugins &gt; Onshore Spill Simulator</b>, on the
+toolbar and in the Processing Toolbox.</li>
+<li>Open a project with a DEM in a projected CRS (metres).
+Arrange and style the layers the way the animation should look; only the layers that are switched on are drawn.</li>
+<li>Run <b>Simulate onshore spill</b>. Set the DEM, click the spill point on the map, choose the release type, the product
+and the release size, the month, the start time and any storms (e.g. <code>24,3,50; 54,2,25</code>).</li>
+<li>Add the ground layers (pads, site plan, roads, dugouts, woodland), the mapped rivers and the receptor layers.</li>
+<li>Choose an output folder and run. The log shows each stage. Runtime depends on the grid size, simulated duration,
+output settings and available computing resources.</li>
+<li>To redraw the animation after restyling the map or changing the extent, run <b>Render animation from a finished run</b>
+and select the <code>*_run.json</code> file.</li>
+</ol>
+<p class="note">Advanced settings (expand <i>Advanced parameters</i>): spray share, release height and droplet size; model area;
+cell size; DEM smoothing and depression tolerance; stream threshold; snapping the spill point onto a stream (use it for
+road crossings); temperature, stream flow, soil wetness and depth to groundwater overrides; curve number; rivulet width;
+bank stranding; animation size and speed. Heat-transfer settings (source temperature, cloud, humidity) and the control
+layers (roughness zones, barriers, recovery points) are in the main form.</p>
+
+<h3 id="panel">5.0 Simulation panel (set up, run and play inside QGIS)</h3>
+<p>Click <b>Simulation panel</b> on the toolbar (green play button) or in <b>Plugins &gt; Onshore Spill Simulator</b>. The panel
+docks on the right of the map and works with the study project; it reads <code>00_Config/model_inputs.json</code>, so a run made
+in the panel uses the same DEM, ground layers, rivers and receptors as the reference scenarios.</p>
+<ol>
+<li><b>Set up and run.</b> Choose the hazard (oil well spillage, H2S leakage, rig diesel tank, road tanker, continuous leak) and the
+location (wellhead, rig fuel storage, stream crossing, or <i>Pick a point on the map</i>). Set the date and time the release
+starts. The season box underneath updates with the date: season name, mean and afternoon temperature, humidity, monthly rain and
+rain days, the resultant wind and its steadiness, stream flow, soil wetness and groundwater depth for that month (Tamale normals
+and the DGLE wind record), with notes on what this means for oil and gas. <i>Typical for the month</i> fills in the storms
+expected over the run (mean number of rain days in the period, each at the mean rain-day depth, as a late-afternoon storm).
+Adjust the release figures and press <b>Run simulation</b>. The model runs in the background; the map stays usable.</li>
+<li><b>Play.</b> When the run ends the panel switches to <i>Play</i>. The result is added to the <i>Animation player</i> group at
+the top of the Layers panel and stepped through frame by frame with the slider, the play / pause buttons and the speed list. Any
+earlier run in <code>04_Outputs</code> can be chosen from the list. For oil runs the oil temperature and the yield stress of
+gelled oil can be shown instead of the thickness. Subtitles describe each frame: the clock and date, whether the release is still
+running, the wind and rain or the atmospheric stability, the oil temperature and gelled volume, how far the oil or gas has reached
+and in which direction, the receptors reached and the nearest settlement. <i>Make GIF / MP4 from this map</i> draws the
+animation from the layers that are switched on, including an online basemap such as Google Hybrid; <i>Open the HTML page</i> opens the
+interactive page of the run.</li>
+<li><b>Settlements.</b> Lists the settlements around a well within a chosen radius with their distance, direction and district,
+and how each is affected in the run being played (oil arrival time, or the H2S hazard class and peak concentration). Rows within
+1 km are shaded red and within 2 km orange. <i>Add a settlement</i> lets a compound or village be clicked on the map (with the
+Google Hybrid basemap on); it is saved in the <i>settlements_digitised</i> layer and used as a receptor in every later run.</li>
+</ol>
+<h3 id="tanker">5.1 Movable tanker</h3>
+<ol>
+<li>Click <b>Place a movable tanker and simulate</b> (orange truck on the toolbar), then click the map where the tanker
+loses its load - a road, a stream crossing, a laydown area.</li>
+<li>A small form asks for the product, the volume lost, the time to empty, the month, the start time, any storm and whether to
+snap the point onto a stream. The point is added to the <i>Movable tanker</i> layer.</li>
+<li>The model inputs (DEM, ground layers, rivers, receptors, output folder) are read from
+<code>00_Config/project_config.json</code> beside the project file, so the Processing form opens already filled in - press
+<b>Run</b>, or tick <i>Run straight away</i> in the form. Results go to <code>04_Outputs/Tanker_Runs/&lt;name&gt;</code>, are added to
+the project and the HTML player opens.</li>
+<li>To run several positions later: move or add points in the <i>Movable tanker</i> layer with the editing tools (fields
+name, volume_m3, product, release_min, month, start, storms, snap_m), then run <b>Simulate spills at movable tanker points</b>;
+each point becomes a run.</li>
+<li>Every HTML player also has a <b>Sandbox tanker</b> button: drag the orange marker anywhere within 6 km of the source and the
+page traces the downhill path, the distance to the first watercourse, an indicative travel time and the receptors within 120 m
+of the path. It is a quick screening aid; use the QGIS tool for volumes and timing.</li>
+</ol>
+<h3>5.2 H2S release</h3>
+<p>Run <b>Simulate H2S leakage at a well</b>: click the well, enter the gas rate and H2S content, choose the release mode,
+the month and start time, the receptor layers and the planned H2S zone radius to compare with.</p>
+
+<h2 id="out">6. Outputs</h2>
+<table>
+<tr><th>File</th><th>Content</th></tr>
+<tr><td>*_animation.html</td><td>Stand-alone interactive player: map with the project layers, oil and spray frames, time slider, wind, rain,
+mass balance chart and receptor list; extra animated layers (oil temperature, yield stress and, for well spillages, the H2S plume of
+the same well and season); H2S exposure badges on the receptors; a scenario switcher; the sandbox tanker. Opens in any browser without internet (satellite and street basemaps need a connection).</td></tr>
+<tr><td>*_animation.gif / .mp4</td><td>Animation drawn from the visible QGIS layers with title, clock, legend, wind, rain, zoom inset,
+scale bar and north arrow. PNG frames are kept in *_animation/.</td></tr>
+<tr><td>*_thickness_timeseries_mm.tif</td><td>Surface oil thickness, one band per frame (band description = time).</td></tr>
+<tr><td>*_fallout_timeseries_mm.tif</td><td>Cumulative spray deposit, one band per frame (well spillages).</td></tr>
+<tr><td>*_max_thickness_mm.tif, *_arrival_time_h.tif, *_final_thickness_mm.tif</td><td>Maximum thickness, first arrival time (0.1 mm), thickness at the end.</td></tr>
+<tr><td>*_infiltrated_L_per_m2.tif, *_penetration_depth_m.tif</td><td>Oil soaked into the ground and the depth reached by the oil front.</td></tr>
+<tr><td>*_results.gpkg</td><td>oil_footprint, arrival_isochrones, spray_fallout, groundwater_concern, receptor_impacts, spill_source,
+drainage_network_dem.</td></tr>
+<tr><td>*_mass_balance.csv, *_receptors.csv, *_results.xlsx</td><td>Mass balance at every frame; receptor table sorted by arrival time;
+scenario record.</td></tr>
+<tr><td>*_oil_temperature_timeseries_C.tif, *_viscosity_timeseries_mPas.tif, *_yield_stress_timeseries_Pa.tif</td><td>Heat-transfer
+runs: oil temperature, viscosity and yield stress, one band per frame; also the highest and lowest values over the run
+(*_oil_temp_max_C.tif, *_oil_temp_min_C.tif, *_viscosity_max_mPas.tif, *_yield_stress_max_Pa.tif).</td></tr>
+<tr><td>*_h2s_ppm_timeseries.tif, *_h2s_max_10min_ppm.tif, *_h2s_max_60min_ppm.tif, *_h2s_time_to_AEGL2_h.tif</td><td>H2S runs:
+concentration frames, worst concentrations and time to AEGL-2.</td></tr>
+<tr><td>*_h2s_results.gpkg, *_h2s_receptors.csv, *_h2s_timeseries.csv, *_h2s_results.xlsx, *_h2s_animation.html</td><td>H2S threshold
+zones, planned zone, release point and receptor exposure; distance to each threshold at every frame; HTML player.</td></tr>
+<tr><td>*_run.json, *_summary.json</td><td>Run record used to redraw the animation, and the key results.</td></tr>
+</table>
+
+<h2 id="use">7. Using the results</h2>
+<ul>
+<li><b>Response times:</b> the arrival isochrones and the receptor table give the time available to deploy booms, berms and
+absorbents before oil reaches a stream, a dugout or a settlement.</li>
+<li><b>Containment:</b> the footprint and the first entry into the drainage network show where interceptor trenches and
+earth berms should be pre-planned (pad perimeter drain, culverts on the access road).</li>
+<li><b>Water supply:</b> water points reached by oil or by spray should not be used for drinking water for the camp; new
+boreholes should be sited upwind and up-gradient of the rig, outside the pad drainage.</li>
+<li><b>Season:</b> compare dry- and wet-season runs - in the wet season storms spread the oil and flowing streams carry it
+kilometres in hours; in the dry season oil stays near the source and soaks deeper into dry soil.</li>
+<li><b>Mass balance:</b> the volumes on the ground and stranded on banks are the volumes to be recovered and the basis for waste
+handling estimates.</li>
+</ul>
+
+<h2 id="limits">8. Calibration and limitations</h2>
+<ul>
+<li>The DEM controls the result. With a 30 m global DEM, ditches, culverts, bunds and the pad drainage are not resolved.
+A drone or RTK survey DTM of the site (1-5 m) should be used for the final assessment; reduce the depression tolerance to
+0.2-0.5 m with such data.</li>
+<li>Release figures are placeholders until the drilling engineering basis gives the worst-case discharge, the duration to
+capping and the rig's tank inventories and positions.</li>
+<li>Surface retention, roughness, soil conductivity, stream flow and bank stranding are literature-based defaults; they should be
+checked against site soil tests (infiltration, texture), stream gauging and, where possible, field spill-trial observations.</li>
+<li>Preferential flow through cracks, root channels and fractured laterite is not modelled; actual penetration can be deeper
+than the computed front.</li>
+<li>Fire is not modelled; H2S is modelled with a passive Gaussian puff model (Section 3.9). Response actions are applied only
+where barriers and recovery points are given; the reference runs show the unmitigated case.</li>
+<li>The heat balance treats the oil layer as well mixed; for layers thicker than a few centimetres the surface cools faster than
+the core. Solar radiation and cloud are monthly typical values, not a forecast.</li>
+<li>Default gas rate and H2S content are placeholders and do not describe a particular well.</li>
+<li>Dissolution and biodegradation are neglected over the simulated periods (hours to days).</li>
+</ul>
+
+<h2 id="refs">9. References</h2>
+<ul>
+<li>Andrade, E.N. da C. (1930). The viscosity of liquids. Nature, 125, 309-310.</li>
+<li>Atlas, D., Srivastava, R.C. and Sekhon, R.S. (1973). Doppler radar characteristics of precipitation at vertical incidence. Reviews of Geophysics and Space Physics, 11(1), 1-35.</li>
+<li>Barnes, R., Lehman, C. and Mulla, D. (2014). Priority-flood: an optimal depression-filling and watershed-labeling algorithm for digital elevation models. Computers &amp; Geosciences, 62, 117-127.</li>
+<li>Briggs, G.A. (1973). Diffusion estimation for small emissions. ATDL Contribution File No. 79, Atmospheric Turbulence and Diffusion Laboratory, Oak Ridge.</li>
+<li>Briggs, G.A. (1975). Plume rise predictions. In: Lectures on Air Pollution and Environmental Impact Analyses, American Meteorological Society, Boston, 59-111.</li>
+<li>Briggs, G.A. (1984). Plume rise and buoyancy effects. In: Atmospheric Science and Power Production, DOE/TIC-27601, 327-366.</li>
+<li>Brutsaert, W. (1975). On a derivable formula for long-wave radiation from clear skies. Water Resources Research, 11(5), 742-744.</li>
+<li>CONCAWE (1979). Protection of groundwater from oil pollution. Report 3/79, The Hague.</li>
+<li>Echeverribar, I., Fernandez-Pato, J., Martinez-Aranda, S., Garcia, R. and Garcia-Navarro, P. (2023). A model for computing
+thermally-driven shallow flows. IOP Conference Series: Earth and Environmental Science, 1136, 012037.</li>
+<li>Engman, E.T. (1986). Roughness coefficients for routing surface runoff. Journal of Irrigation and Drainage Engineering, 112(1), 39-53.</li>
+<li>Fingas, M.F. (2004). Modeling evaporation using models that are not boundary-layer regulated. Journal of Hazardous Materials, 107(1-2), 27-36.</li>
+<li>Freeman, T.G. (1991). Calculating catchment area with divergent flow based on a regular grid. Computers &amp; Geosciences, 17(3), 413-422.</li>
+<li>Garcia, R., Echeverribar, I., Martinez-Aranda, S., Fernandez-Pato, J., Garcia-Navarro, P., Calero, N., Cordova, J.R. and Artigas, J.
+(2023). Overland oil spill modelling considering heat transfer for high pour point oils. Proceedings of the 45th AMOP Technical
+Seminar on Environmental Contamination and Response, Environment and Climate Change Canada, 39-50.</li>
+<li>Garcia, R., Lacasta, A. and Garcia-Navarro, P. (2015). Two-dimensional flexible-mesh model to simulate oil spills over complex terrain. Conference proceedings, 517-525.</li>
+<li>Green, W.H. and Ampt, G.A. (1911). Studies on soil physics, part 1: the flow of air and water through soils. Journal of Agricultural Science, 4(1), 1-24.</li>
+<li>Haurwitz, B. (1945). Insolation in relation to cloudiness and cloud density. Journal of Meteorology, 2, 154-166.</li>
+<li>Huppert, H.E. (1982). The propagation of two-dimensional and axisymmetric viscous gravity currents over a rigid horizontal surface. Journal of Fluid Mechanics, 121, 43-58.</li>
+<li>Kasten, F. and Czeplak, G. (1980). Solar and terrestrial radiation dependent on the amount and type of cloud. Solar Energy, 24, 177-189.</li>
+<li>Leopold, L.B. and Maddock, T. (1953). The hydraulic geometry of stream channels and some physiographic implications. U.S. Geological Survey Professional Paper 252.</li>
+<li>Leverett, M.C. (1941). Capillary behavior in porous solids. Transactions of the AIME, 142, 152-169.</li>
+<li>Mackay, D., Buist, I., Mascarenhas, R. and Paterson, S. (1980). Oil spill processes and models. Environment Canada, Report EE-8.</li>
+<li>National Research Council (2010). Acute Exposure Guideline Levels for Selected Airborne Chemicals, Volume 9 (hydrogen sulfide).
+National Academies Press, Washington DC; EPA AEGL values for hydrogen sulfide.</li>
+<li>NIOSH (1994). Immediately Dangerous to Life or Health (IDLH) values: hydrogen sulfide, 100 ppm.</li>
+<li>Rawls, W.J., Brakensiek, D.L. and Miller, N. (1983). Green-Ampt infiltration parameters from soils data. Journal of Hydraulic Engineering, 109(1), 62-70.</li>
+<li>Turner, D.B. (1964). A diffusion model for an urban area. Journal of Applied Meteorology, 3, 83-91.</li>
+<li>USDA-NRCS (1986). Urban hydrology for small watersheds. Technical Release 55.</li>
+<li>Watmuff, J.H., Charters, W.W.S. and Proctor, D. (1977). Solar and wind induced external coefficients for solar collectors. COMPLES, 2, 56.</li>
+</ul>
+</main>
+</body>
+</html>
