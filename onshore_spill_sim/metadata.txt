@@ -10,6 +10,7 @@ repository=https://github.com/Donnai/onshore-spill-simulator
 homepage=https://github.com/Donnai/onshore-spill-simulator
 tracker=https://github.com/Donnai/onshore-spill-simulator/issues
 category=Raster
+license=GPL-3.0-or-later
 tags=oil spill,H2S,heat transfer,emergency response,HSE,drilling,well control,hydrology,simulation,animation,Voltaian
 experimental=False
 deprecated=False
