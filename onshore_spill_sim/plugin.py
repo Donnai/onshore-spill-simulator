@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import os
 from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon, QDesktopServices
@@ -122,13 +123,13 @@ class OnshoreSpillPlugin:
                 self.iface.removeDockWidget(self.dock)
                 self.dock.deleteLater()
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("Optional operation failed in OnshoreSpillPlugin.unload; existing fallback retained.", exc_info=True)
             self.dock = None
         if self.tool is not None:
             try:
                 self.iface.mapCanvas().unsetMapTool(self.tool)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("Optional operation failed in OnshoreSpillPlugin.unload; existing fallback retained.", exc_info=True)
             self.tool = None
         for a in self.actions:
             self.iface.removePluginMenu(MENU, a)

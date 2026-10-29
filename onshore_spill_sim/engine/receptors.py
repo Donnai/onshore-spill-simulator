@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Collect receptor points (towns, water points, health facilities, dugouts,
 forest reserves, ...) from vector layers into plain dicts."""
+import logging
 from osgeo import ogr, osr
 
 
@@ -57,7 +58,7 @@ def load_receptors(specs, target_wkt, extent=None, log=print):
                     p = g.Centroid() if gt == ogr.wkbMultiPoint else g
                 x, y = p.GetX(), p.GetY()
             except Exception:
-                continue
+                logging.getLogger(__name__).debug("Optional operation failed in load_receptors; existing fallback retained.", exc_info=True); continue
             if extent and not (extent[0] <= x <= extent[2] and extent[1] <= y <= extent[3]):
                 continue
             nm = f.GetField(idx) if idx >= 0 else None

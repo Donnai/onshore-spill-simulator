@@ -5,6 +5,7 @@ flow accumulation and the drainage (channel) network.
 
 Only numpy and GDAL are used so that the code runs inside any QGIS 3 install.
 """
+import logging
 import heapq
 import math
 import numpy as np
@@ -234,7 +235,7 @@ def relief_shade(z, dx, zfactor=None, smooth_m=45.0):
             from scipy.ndimage import gaussian_filter
             z = gaussian_filter(z, smooth_m / float(dx))   # suppress canopy / speckle noise
         except ImportError:
-            pass
+            logging.getLogger(__name__).debug("Optional operation failed in relief_shade; existing fallback retained.", exc_info=True)
     # rows run north to south, columns west to east
     dzdy, dzdx = np.gradient(z * zfactor, dx)
     dzdy = -dzdy                                   # positive = rising to the north

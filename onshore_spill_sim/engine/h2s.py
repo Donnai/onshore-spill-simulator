@@ -41,6 +41,7 @@ Thresholds (EPA Acute Exposure Guideline Levels for H2S, 60-minute values; NIOSH
   escape-impairing effects), AEGL-3 50 ppm (life-threatening), IDLH 100 ppm,
   500 ppm (rapid loss of consciousness).
 """
+import logging
 import math
 import os
 import json
@@ -660,7 +661,7 @@ def run_h2s(cfg, log=print, feedback=None):
         wb.save(p)
         files["xlsx"] = p
     except ImportError:
-        pass
+        logging.getLogger(__name__).debug("Optional operation failed in run_h2s; existing fallback retained.", exc_info=True)
     with open(os.path.join(folder, prefix + "_h2s_summary.json"), "w") as f:
         json.dump(summary, f, indent=1, default=float)
     fdir = os.path.join(folder, prefix + "_frames")

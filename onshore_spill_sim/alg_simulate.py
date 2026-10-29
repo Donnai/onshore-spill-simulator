@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Processing algorithm: Simulate onshore spill."""
+import logging
 import os
 import re
 import tempfile
@@ -416,7 +417,7 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
             sym = layer.renderer().symbol()
             col = sym.color().name()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Optional operation failed in SimulateSpillAlgorithm._html_style; existing fallback retained.", exc_info=True)
         g = layer.geometryType()
         if g == QgsWkbTypes.PointGeometry:
             st.update(kind="point", style=dict(color="#222222", fill=col, radius=5), permanent=False)

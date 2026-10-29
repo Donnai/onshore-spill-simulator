@@ -23,9 +23,9 @@ an output folder and run. The simulation panel also reads a study's
 QGIS/PyQGIS, NumPy and GDAL/OGR/OSR. Optional exporters: openpyxl for Excel,
 Pillow for GIFs, and ffmpeg or imageio-ffmpeg for MP4s.
 
-## Version 2.1.1
+## Version 2.1.2
 
-Corrects ZIP packaging and metadata and removes internal project references from
+Adds diagnostic logging and validated, shell-free video encoding. Also corrects ZIP packaging and metadata and removes internal project references from
 public help and one interface label. Model calculations are unchanged. Software
 checks passed in QGIS 3.34.4 with synthetic data; these do not validate physical
 predictions or every QGIS version.

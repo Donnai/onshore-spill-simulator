@@ -10,6 +10,7 @@ Stream specific discharge: indicative seasonal values for small Voltaian
 tributaries (dry Nov-Apr, peak Aug-Oct); to be replaced by Ghana Hydrological
 Authority gauge data for the Nasia / Daka sub-basins when available.
 """
+import logging
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 RAIN_MM = [3.2, 10.4, 34.9, 82.1, 114.4, 139.7, 178.1, 189.3, 206.1, 106.2, 6.0, 3.4]
@@ -110,7 +111,7 @@ def season_summary(month_index, wind_csv=None):
             u, v, s = load_wind_csv(wind_csv)
             c["u"], c["v"], c["speed"] = u[m], v[m], s[m]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Optional operation failed in season_summary; existing fallback retained.", exc_info=True)
     frm = wind_from_deg(c["u"], c["v"])
     to = (frm + 180.0) % 360.0
     steady = min((c["u"] ** 2 + c["v"] ** 2) ** 0.5 / max(c["speed"], 0.1), 1.0)

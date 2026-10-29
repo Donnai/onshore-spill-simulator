@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Load and style the results of a run in the current QGIS project."""
+import logging
 import os
 
 from qgis.core import (QgsProject, QgsRasterLayer, QgsVectorLayer, QgsColorRampShader,
@@ -29,7 +30,7 @@ def ramp_renderer(layer, ramp, label_fmt="%g mm"):
     try:
         layer.dataProvider().setUserNoDataValue(1, [])
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("Optional operation failed in ramp_renderer; existing fallback retained.", exc_info=True)
 
 
 def arrival_renderer(layer, hmax):

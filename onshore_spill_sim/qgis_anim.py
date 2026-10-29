@@ -5,12 +5,12 @@ project layers (same symbology as the QGIS map), adds a title block, clock,
 legend, wind arrow, rain indicator, scale bar and north arrow, then writes
 PNG frames, an animated GIF and (when ffmpeg is available) an MP4.
 """
+import logging
 import datetime as _dt
 import json
 import math
 import os
 import shutil
-import subprocess
 import tempfile
 
 import numpy as np
@@ -19,7 +19,7 @@ from osgeo import gdal
 from qgis.core import (QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsMapRendererParallelJob,
                        QgsMapSettings, QgsProject, QgsRasterLayer, QgsRectangle, QgsVectorLayer,
                        QgsMultiBandColorRenderer, QgsRuleBasedRenderer, QgsLineSymbol, QgsPointXY)
-from qgis.PyQt.QtCore import QSize, Qt, QRectF, QPointF, QRect
+from qgis.PyQt.QtCore import QSize, Qt, QRectF, QPointF, QRect, QProcess
 from qgis.PyQt.QtGui import (QColor, QFont, QImage, QPainter, QPen, QBrush, QLinearGradient,
                              QPolygonF, QFontMetrics)
 
@@ -210,7 +210,7 @@ def render_animation(run_json, layers, out_dir=None, width=1600, height=1000, ex
     try:
         ms.setTransformContext(QgsProject.instance().transformContext())
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("Optional operation failed in render_animation; existing fallback retained.", exc_info=True)
     base = _render(ms)
     ext = ms.visibleExtent()
     ins = None
@@ -646,14 +646,28 @@ def _mp4(frame_dir, prefix, out, fps, log):
         log("ffmpeg not found - MP4 skipped (GIF and PNG frames written). Install ffmpeg or "
             "imageio-ffmpeg to get MP4 files.")
         return None
+    if not os.path.isabs(exe) or not os.path.isfile(exe) or not os.access(exe, os.X_OK):
+        log("MP4 skipped: ffmpeg must resolve to an existing executable with an absolute path.")
+        return None
     cmd = [exe, "-y", "-loglevel", "error", "-framerate", str(fps), "-i",
            os.path.join(frame_dir, prefix + "_frame_%03d.png"), "-c:v", "libx264", "-pix_fmt", "yuv420p",
            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-movflags", "+faststart", out]
     try:
-        kw = {}
-        if os.name == "nt":
-            kw["creationflags"] = 0x08000000
-        subprocess.check_call(cmd, **kw)
+        process = QProcess()
+        process.setProcessChannelMode(QProcess.MergedChannels)
+        process.start(exe, cmd[1:])
+        if not process.waitForStarted(10000):
+            log("MP4 encoder did not start: %s" % process.errorString())
+            return None
+        if not process.waitForFinished(-1):
+            process.kill()
+            process.waitForFinished(10000)
+            log("MP4 encoder did not finish: %s" % process.errorString())
+            return None
+        if process.exitStatus() != QProcess.NormalExit or process.exitCode() != 0:
+            detail = bytes(process.readAllStandardOutput()).decode("utf-8", errors="replace")
+            log("MP4 encoding failed (exit %s): %s" % (process.exitCode(), detail[-2000:]))
+            return None
         log("MP4 written: %s" % out)
         return out
     except Exception as e:

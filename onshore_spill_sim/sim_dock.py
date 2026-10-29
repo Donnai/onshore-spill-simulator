@@ -14,6 +14,7 @@ Simulation panel: set up, run and play back oil-spill and H2S scenarios inside Q
 The panel uses the study set-up in <project folder>/00_Config/model_inputs.json, so a run made
 here uses the same layers and rules as the reference scenarios.
 """
+import logging
 import csv
 import datetime as _dt
 import glob
@@ -22,7 +23,6 @@ import math
 import os
 import queue
 import re
-import subprocess
 import sys
 
 from qgis.core import (QgsApplication, QgsProject, QgsTask, QgsRasterLayer, QgsPointXY,
@@ -816,7 +816,7 @@ class SimulationDock(QDockWidget):
             while True:
                 self.logbox.appendPlainText(t.q.get_nowait())
         except queue.Empty:
-            pass
+            logging.getLogger(__name__).debug("Optional operation failed in SimulationDock._drain_log; existing fallback retained.", exc_info=True)
 
     def _failed(self):
         self._drain_log()
@@ -883,7 +883,7 @@ class SimulationDock(QDockWidget):
                     with open(rj) as f:
                         r = json.load(f)
                 except Exception:
-                    continue
+                    logging.getLogger(__name__).debug("Optional operation failed in SimulationDock.refresh_runs; existing fallback retained.", exc_info=True); continue
                 grp = os.path.relpath(rj, os.path.join(self.root, "04_Outputs")).split(os.sep)[0]
                 items.append(("%s  |  %s" % (r.get("title") or r.get("name"), grp.replace("_", " ")), rj,
                               os.path.getmtime(rj)))
@@ -974,7 +974,7 @@ class SimulationDock(QDockWidget):
             from qgis.core import QgsBilinearRasterResampler
             l.resampleFilter().setZoomedInResampler(QgsBilinearRasterResampler())
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Optional operation failed in SimulationDock._add_play_layer; existing fallback retained.", exc_info=True)
         if linear:
             lin_renderer(l, ramp, fmt)
         else:
@@ -1333,4 +1333,4 @@ class SimulationDock(QDockWidget):
         try:
             QgsProject.instance().readProject.disconnect(self._rp)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Optional operation failed in SimulationDock.cleanup; existing fallback retained.", exc_info=True)

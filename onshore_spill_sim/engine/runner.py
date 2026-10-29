@@ -7,6 +7,7 @@ One-call scenario runner used by the QGIS algorithm and by batch scripts.
 
 cfg is a plain dict (see DEFAULTS); every key can be overridden.
 """
+import logging
 import datetime as _dt
 import json
 import math
@@ -177,7 +178,7 @@ def run_scenario(cfg, log=print, feedback=None, terrain=None):
         lo, la, _ = tr.TransformPoint(sx, sy)
         c["_latlon"] = (la, lo)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("Optional operation failed in run_scenario; existing fallback retained.", exc_info=True)
     sc = build_scenario(c, log)
     controls = build_controls(terrain.grid, c, log)
     ext = terrain.grid.extent()
@@ -295,7 +296,7 @@ def write_html(res, c, files, summary, log=print):
         with open(files["run_json"]) as f_:
             caps = json.load(f_).get("captions") or []
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("Optional operation failed in write_html; existing fallback retained.", exc_info=True)
     for i, fr in enumerate(res.frames):
         frames.append(dict(cap=caps[i] if i < len(caps) else None,
                            t=round(fr["t_h"], 3), oil=html_export._uri(files["frames"][i]),

@@ -6,6 +6,7 @@ Leaflet 1.9.4 is embedded, so the page opens without internet access
 (satellite / street basemaps need a connection; the terrain hillshade,
 the spill frames and every vector layer are inside the file).
 """
+import logging
 import base64
 import json
 import math
@@ -75,7 +76,7 @@ def layer_geojson(path, layer, clip_ll=None, fields=None, simplify_m=0.0, where=
                 if not g.Intersects(clip):
                     continue
             except Exception:
-                continue
+                logging.getLogger(__name__).debug("Optional operation failed in layer_geojson; existing fallback retained.", exc_info=True); continue
             if ogr.GT_Flatten(g.GetGeometryType()) not in (ogr.wkbPoint, ogr.wkbMultiPoint):
                 try:
                     gi = g.Intersection(clip)
