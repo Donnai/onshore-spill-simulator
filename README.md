@@ -1,2 +1,45 @@
-# onshore-spill-simulator
-QGIS plugin for onshore oil spill and H2S simulations, with map animations and reproducible software tests.
+# Onshore Spill Simulator
+
+QGIS plugin by Donald Annor Appiah for onshore oil/fuel spill and H2S simulations,
+with Processing algorithms and map animations.
+
+## Installation and use
+
+In QGIS use **Plugins > Manage and Install Plugins > Install from ZIP** with
+`onshore_spill_sim.zip`. The archive contains the single `onshore_spill_sim/`
+folder. Exclude Python cache folders and compiled bytecode when packaging.
+
+The Processing Toolbox contains **Simulate onshore spill**, **Simulate spills at
+movable tanker points**, **Simulate H2S leakage at a well**, and **Render animation
+from a finished run**. Open **Plugins > Onshore Spill Simulator > Method and user
+guide** for the full guide in `onshore_spill_sim/help/index.html`.
+
+Use a projected DEM in metres, supply release and environmental inputs, select
+an output folder and run. The simulation panel also reads a study's
+`00_Config/model_inputs.json`; operational projects and data are not included.
+
+## Dependencies
+
+QGIS/PyQGIS, NumPy and GDAL/OGR/OSR. Optional exporters: openpyxl for Excel,
+Pillow for GIFs, and ffmpeg or imageio-ffmpeg for MP4s.
+
+## Version 2.2.0
+
+The public package contains synthetic example environmental values, generic
+methods and code only. No study boundary, well location, survey, receptor
+inventory, project configuration, raster or seismic input is bundled.
+All months now share an invented example weather profile. Replace the example
+with reviewed environmental inputs before assessment. These defaults differ
+from earlier releases, so results can change when overrides are absent.
+The model equations and existing project input-loading workflow are retained.
+
+## License
+
+This plugin is distributed under the GNU General Public License, version 3 or
+any later version (GPL-3.0-or-later). See `LICENSE` and
+`onshore_spill_sim/LICENSE`. Bundled Leaflet 1.9.4 retains its BSD 2-Clause
+license in `onshore_spill_sim/engine/web/LEAFLET_LICENSE.txt`.
+
+Source: https://github.com/Donnai/onshore-spill-simulator
+
+Issues: https://github.com/Donnai/onshore-spill-simulator/issues
