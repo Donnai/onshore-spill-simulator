@@ -18,7 +18,7 @@ import numpy as np
 from .terrain import Terrain, rasterize_layer
 from .surfaces import build_surface_classes
 from .model import Simulator, Scenario
-from .oils import get_oil, OILS, BBL_M3
+from .oils import get_oil, BBL_M3
 from .receptors import load_receptors
 from . import climate, fallout, outputs, html_export
 
@@ -285,7 +285,6 @@ def summarise(res, c, files):
 
 def write_html(res, c, files, summary, log=print):
     sc = res.scenario
-    from osgeo import osr
     tr = html_export._to_ll(res.grid.wkt)
     lon, lat, _ = tr.TransformPoint(*sc.source_xy)
     b = files["frame_bounds"]

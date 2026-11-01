@@ -4,7 +4,6 @@ Writers for the simulation results: GeoTIFFs, GeoPackage layers, tables,
 colour-mapped PNG frames (EPSG:3857, for web maps) and the summary record.
 """
 import csv
-import json
 import math
 import os
 import numpy as np

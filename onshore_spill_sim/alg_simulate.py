@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """Processing algorithm: Simulate onshore spill."""
+from .qgis_compat import GEOM_LINE, GEOM_POINT, SRC_ANY, SRC_LINE, SRC_POLYGON
 import logging
 import os
 import re
 import tempfile
 
-from qgis.core import (QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
-                       QgsProcessingParameterRasterLayer, QgsProcessingParameterPoint,
-                       QgsProcessingParameterEnum, QgsProcessingParameterNumber,
-                       QgsProcessingParameterString, QgsProcessingParameterFile,
-                       QgsProcessingParameterMultipleLayers, QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterBoolean, QgsProcessingParameterFolderDestination,
-                       QgsProcessingParameterDefinition, QgsCoordinateTransform,
-                       QgsCoordinateReferenceSystem, QgsVectorFileWriter, QgsProject,
-                       QgsRasterLayer, QgsVectorLayer, QgsWkbTypes)
+from qgis.core import (QgsProcessingAlgorithm, QgsProcessingException, QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterPoint, QgsProcessingParameterEnum,
+                       QgsProcessingParameterNumber, QgsProcessingParameterString,
+                       QgsProcessingParameterFile, QgsProcessingParameterMultipleLayers,
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterBoolean,
+                       QgsProcessingParameterFolderDestination, QgsProcessingParameterDefinition,
+                       QgsCoordinateTransform, QgsVectorFileWriter,
+                       QgsProject)
 from qgis.PyQt.QtGui import QIcon
 
 from .engine.oils import OILS
@@ -106,20 +106,20 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
         P(QgsProcessingParameterNumber("FRAME_MIN", "Animation frame interval (min)",
                                        QgsProcessingParameterNumber.Double, 60.0, minValue=1.0))
         P(QgsProcessingParameterVectorLayer("PADS", "Rig pads / compacted laterite areas (polygons)",
-                                            [QgsProcessing.TypeVectorPolygon], optional=True))
+                                            [SRC_POLYGON], optional=True))
         P(QgsProcessingParameterVectorLayer("SITEPLAN", "Site plan polygons, classified by feature name "
                                             "(pad, laterite, bund, pit, cellar...)",
-                                            [QgsProcessing.TypeVectorPolygon], optional=True))
+                                            [SRC_POLYGON], optional=True))
         P(QgsProcessingParameterMultipleLayers("ROADS", "Roads and tracks (lines)",
-                                               QgsProcessing.TypeVectorLine, optional=True))
+                                               SRC_LINE, optional=True))
         P(QgsProcessingParameterMultipleLayers("WATER", "Ponds, dugouts, reservoirs (polygons)",
-                                               QgsProcessing.TypeVectorPolygon, optional=True))
+                                               SRC_POLYGON, optional=True))
         P(QgsProcessingParameterMultipleLayers("WOODLAND", "Forest reserves / woodland (polygons)",
-                                               QgsProcessing.TypeVectorPolygon, optional=True))
+                                               SRC_POLYGON, optional=True))
         P(QgsProcessingParameterMultipleLayers("RIVERS", "Mapped rivers and streams (lines, burned into the DEM)",
-                                               QgsProcessing.TypeVectorLine, optional=True))
+                                               SRC_LINE, optional=True))
         P(QgsProcessingParameterMultipleLayers("RECEPTORS", "Receptor layers (towns, water points, health "
-                                               "facilities, dugouts...)", QgsProcessing.TypeVectorAnyGeometry,
+                                               "facilities, dugouts...)", SRC_ANY,
                                                optional=True))
         P(QgsProcessingParameterBoolean("ANIMATE", "Render GIF / MP4 from the visible project layers", True))
         P(QgsProcessingParameterBoolean("HTML", "Write the interactive HTML animation", True))
@@ -131,12 +131,12 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
                                        "e.g. 60 for wellhead fluid)", QgsProcessingParameterNumber.Double, None,
                                        optional=True))
         P(QgsProcessingParameterMultipleLayers("ROUGH", "Roughness zones (polygons) - Manning n override",
-                                               QgsProcessing.TypeVectorPolygon, optional=True))
+                                               SRC_POLYGON, optional=True))
         P(QgsProcessingParameterMultipleLayers("BARRIERS", "Barriers - berms, bund walls, sandbag lines "
-                                               "(lines or polygons)", QgsProcessing.TypeVectorAnyGeometry,
+                                               "(lines or polygons)", SRC_ANY,
                                                optional=True))
         P(QgsProcessingParameterMultipleLayers("SINKS", "Recovery points, sumps, free-outflow cells "
-                                               "(oil removed there)", QgsProcessing.TypeVectorAnyGeometry,
+                                               "(oil removed there)", SRC_ANY,
                                                optional=True))
         P(QgsProcessingParameterFolderDestination("OUT", "Output folder"))
         # ---- advanced
@@ -215,7 +215,7 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
             res = QgsVectorFileWriter.writeAsVectorFormatV3(layer, path, ctx, opts)
         else:
             res = QgsVectorFileWriter.writeAsVectorFormatV2(layer, path, ctx, opts)
-        if res[0] != QgsVectorFileWriter.NoError:
+        if res[0] != QgsVectorFileWriter.WriterError.NoError:
             feedback.reportError("Could not export %s: %s" % (layer.name(), res[1]))
             return None
         return path, "lyr"
@@ -226,7 +226,7 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
             if n in names:
                 return n
         for f in layer.fields():
-            if f.type() == 10:   # QVariant.String
+            if f.type() == 10:   # VT.String
                 return f.name()
         return names[0] if names else None
 
@@ -250,7 +250,7 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
         out = self.parameterAsString(parameters, "OUT", context)
         os.makedirs(out, exist_ok=True)
         tmpdir = tempfile.mkdtemp(prefix="spill_inputs_")
-        log = feedback.pushInfo
+        feedback.pushInfo
 
         def multi(key):
             return self.parameterAsLayerList(parameters, key, context) or []
@@ -419,9 +419,9 @@ class SimulateSpillAlgorithm(QgsProcessingAlgorithm):
         except Exception:
             logging.getLogger(__name__).debug("Optional operation failed in SimulateSpillAlgorithm._html_style; existing fallback retained.", exc_info=True)
         g = layer.geometryType()
-        if g == QgsWkbTypes.PointGeometry:
+        if g == GEOM_POINT:
             st.update(kind="point", style=dict(color="#222222", fill=col, radius=5), permanent=False)
-        elif g == QgsWkbTypes.LineGeometry:
+        elif g == GEOM_LINE:
             st.update(style=dict(color=col, weight=2))
         else:
             st.update(style=dict(color=col, weight=1.2, fill=col, fillOpacity=0.25))

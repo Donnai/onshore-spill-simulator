@@ -409,7 +409,7 @@ def _hazard_class(peak, m1):
 def receptor_exposure(res, recs, source_xy, frame_h):
     g = res["grid"]
     out = []
-    shape = (g.nrows, g.ncols)
+    (g.nrows, g.ncols)
     per_hour = max(int(round(1.0 / frame_h)), 1)
     for rc in recs:
         r, c = g.xy_to_rc(rc["x"], rc["y"])

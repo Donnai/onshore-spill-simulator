@@ -277,8 +277,8 @@ def render_animation(run_json, layers, out_dir=None, width=1600, height=1000, ex
         img = QImage(width, height, QImage.Format_ARGB32_Premultiplied)
         img.fill(QColor(255, 255, 255))
         p = QPainter(img)
-        p.setRenderHint(QPainter.Antialiasing, True)
-        p.setRenderHint(QPainter.TextAntialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        p.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
         p.drawImage(0, 90, base)
         p.drawImage(0, 90, top)
         fr = frames[min(i, len(frames) - 1)]
@@ -328,11 +328,11 @@ def _source_marker(p, settings, ox, oy, pt, label, big):
         fm = QFontMetrics(p.font())
         tw = fm.horizontalAdvance(label) if hasattr(fm, "horizontalAdvance") else fm.width(label)
         rect = QRectF(x - tw - 22, y - 10, tw + 10, 20)
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(QColor(255, 255, 255, 225)))
         p.drawRoundedRect(rect, 4, 4)
         p.setPen(QColor(20, 33, 27))
-        p.drawText(rect, Qt.AlignCenter, label)
+        p.drawText(rect, Qt.AlignmentFlag.AlignCenter, label)
 
 
 def _inset(p, W, isz, base, top, ext, iext, map_h):
@@ -342,18 +342,18 @@ def _inset(p, W, isz, base, top, ext, iext, map_h):
     rx = (iext.xMinimum() - ext.xMinimum()) * sx
     ry = 90 + (ext.yMaximum() - iext.yMaximum()) * sx
     rw = iext.width() * sx
-    p.setBrush(Qt.NoBrush)
-    p.setPen(QPen(QColor(20, 33, 27), 1.4, Qt.DashLine))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.setPen(QPen(QColor(20, 33, 27), 1.4, Qt.PenStyle.DashLine))
     p.drawRect(QRectF(rx, ry, rw, rw))
-    p.setPen(QPen(QColor(20, 33, 27, 120), 1, Qt.DotLine))
+    p.setPen(QPen(QColor(20, 33, 27, 120), 1, Qt.PenStyle.DotLine))
     p.drawLine(QPointF(rx + rw, ry), QPointF(x0, y0))
     p.drawLine(QPointF(rx + rw, ry + rw), QPointF(x0, y0 + isz))
-    p.setPen(Qt.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QBrush(QColor(0, 0, 0, 60)))
     p.drawRect(QRectF(x0 + 3, y0 + 3, isz, isz))
     p.drawImage(int(x0), int(y0), base)
     p.drawImage(int(x0), int(y0), top)
-    p.setBrush(Qt.NoBrush)
+    p.setBrush(Qt.BrushStyle.NoBrush)
     p.setPen(QPen(QColor(255, 255, 255), 3))
     p.drawRect(QRectF(x0, y0, isz, isz))
     p.setPen(QPen(QColor(20, 33, 27), 1))
@@ -364,12 +364,12 @@ def _inset(p, W, isz, base, top, ext, iext, map_h):
     p.setFont(QFont("Segoe UI", 8))
     target = _nice(iext.width() * 0.3)
     lab = ("%g km" % (target / 1000.0)) if target >= 1000 else ("%g m" % target)
-    p.drawText(QRectF(x0 + 8, y0 + isz - 22, isz - 16, 22), Qt.AlignLeft | Qt.AlignVCenter,
+    p.drawText(QRectF(x0 + 8, y0 + isz - 22, isz - 16, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                "Zoom on the spill source")
     bw = target / iext.width() * isz
     bx = x0 + isz - 12 - bw
     p.fillRect(QRectF(bx, y0 + isz - 12, bw, 4), QColor(20, 33, 27))
-    p.drawText(QRectF(bx - 60, y0 + isz - 24, bw + 60, 12), Qt.AlignRight | Qt.AlignVCenter, lab)
+    p.drawText(QRectF(bx - 60, y0 + isz - 24, bw + 60, 12), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, lab)
 
 
 def _events(rec):
@@ -414,9 +414,9 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
     f = QFont("Segoe UI", 20)
     f.setBold(True)
     p.setFont(f)
-    p.drawText(QRectF(24, 10, W * 0.66, 40), Qt.AlignLeft | Qt.AlignVCenter, title or rec.get("title") or rec["name"])
+    p.drawText(QRectF(24, 10, W * 0.66, 40), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, title or rec.get("title") or rec["name"])
     p.setFont(QFont("Segoe UI", 11))
-    p.drawText(QRectF(24, 50, W * 0.66, 28), Qt.AlignLeft | Qt.AlignVCenter,
+    p.drawText(QRectF(24, 50, W * 0.66, 28), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                subtitle or "  |  ".join(x for x in (rec.get("subtitle", ""), rec.get("product", "")) if x))
     # clock
     t = fr["t_h"]
@@ -425,11 +425,11 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
     f = QFont("Segoe UI", 26)
     f.setBold(True)
     p.setFont(f)
-    p.drawText(QRectF(W - 360, 6, 336, 46), Qt.AlignRight | Qt.AlignVCenter, "T+%02d:%02d" % (hh, mm))
+    p.drawText(QRectF(W - 360, 6, 336, 46), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, "T+%02d:%02d" % (hh, mm))
     p.setFont(QFont("Segoe UI", 11))
     if start:
         d = start + _dt.timedelta(hours=t)
-        p.drawText(QRectF(W - 420, 52, 396, 26), Qt.AlignRight | Qt.AlignVCenter, d.strftime("%a %d %b %Y, %H:%M"))
+        p.drawText(QRectF(W - 420, 52, 396, 26), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, d.strftime("%a %d %b %Y, %H:%M"))
     y0 = 90 + map_h
     # bottom strip
     p.fillRect(QRectF(0, y0, W, H - y0), QColor(248, 250, 248))
@@ -453,12 +453,12 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
     for k, v in kp:
         p.setFont(QFont("Segoe UI", 9))
         p.setPen(QColor(91, 107, 99))
-        p.drawText(QRectF(x, y0 + 10, 170, 18), Qt.AlignLeft, k)
+        p.drawText(QRectF(x, y0 + 10, 170, 18), Qt.AlignmentFlag.AlignLeft, k)
         f = QFont("Segoe UI", 14)
         f.setBold(True)
         p.setFont(f)
         p.setPen(ink)
-        p.drawText(QRectF(x, y0 + 28, 170, 26), Qt.AlignLeft, v)
+        p.drawText(QRectF(x, y0 + 28, 170, 26), Qt.AlignmentFlag.AlignLeft, v)
         x += 165
     # legend
     if h2s:
@@ -473,8 +473,8 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
     p.setFont(QFont("Segoe UI", 8))
     p.setPen(QColor(91, 107, 99))
     foot = "Prepared by %s" % (prepared_by or rec.get("prepared_by") or "-")
-    p.drawText(QRectF(24, H - 22, W - 48, 18), Qt.AlignLeft | Qt.AlignVCenter, foot)
-    p.drawText(QRectF(24, H - 22, W - 48, 18), Qt.AlignRight | Qt.AlignVCenter,
+    p.drawText(QRectF(24, H - 22, W - 48, 18), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, foot)
+    p.drawText(QRectF(24, H - 22, W - 48, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                "Screening simulation for emergency planning - not a forecast")
     # wind + rain box (top-left of the map)
     bx, by = 16, 104
@@ -489,35 +489,35 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
     p.setFont(QFont("Segoe UI", 7))
     for k, lab in enumerate("NESW"):
         a = math.radians(k * 90)
-        p.drawText(QRectF(cx + 27 * math.sin(a) - 6, cy - 27 * math.cos(a) - 6, 12, 12), Qt.AlignCenter, lab)
+        p.drawText(QRectF(cx + 27 * math.sin(a) - 6, cy - 27 * math.cos(a) - 6, 12, 12), Qt.AlignmentFlag.AlignCenter, lab)
     txt = "Calm"
     if w:
         to = math.radians(w[0])
         dx, dy = math.sin(to), -math.cos(to)
-        p.setPen(QPen(green, 4, Qt.SolidLine, Qt.RoundCap))
+        p.setPen(QPen(green, 4, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         p.drawLine(QPointF(cx - 18 * dx, cy - 18 * dy), QPointF(cx + 16 * dx, cy + 16 * dy))
         tip = QPointF(cx + 26 * dx, cy + 26 * dy)
         lft = QPointF(cx + 12 * dx - 8 * dy, cy + 12 * dy + 8 * dx)
         rgt = QPointF(cx + 12 * dx + 8 * dy, cy + 12 * dy - 8 * dx)
         p.setBrush(QBrush(green))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawPolygon(QPolygonF([tip, lft, rgt]))
         frm = (w[0] + 180) % 360
         txt = "Wind from %s, %.1f m/s" % (DIRS[int(round(frm / 22.5)) % 16], w[1])
     p.setPen(ink)
     p.setFont(QFont("Segoe UI", 9))
-    p.drawText(QRectF(bx + 90, by + 10, 156, 22), Qt.AlignLeft | Qt.AlignVCenter, txt)
+    p.drawText(QRectF(bx + 90, by + 10, 156, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, txt)
     rain = fr.get("rain_mmh", 0) or 0
     if h2s:
         stab = row.get("stability", "D")
-        p.drawText(QRectF(bx + 90, by + 34, 156, 22), Qt.AlignLeft | Qt.AlignVCenter,
+        p.drawText(QRectF(bx + 90, by + 34, 156, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    "Stability %s - %s" % (stab, STAB.get(stab, "")))
-        p.drawText(QRectF(bx + 90, by + 58, 156, 22), Qt.AlignLeft | Qt.AlignVCenter,
+        p.drawText(QRectF(bx + 90, by + 58, 156, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    "Plume height %.0f m" % row.get("plume_h_m", 0))
     else:
-        p.drawText(QRectF(bx + 90, by + 34, 156, 22), Qt.AlignLeft | Qt.AlignVCenter,
+        p.drawText(QRectF(bx + 90, by + 34, 156, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    ("Rain %.1f mm/h" % rain) if rain > 0 else "No rain")
-        p.drawText(QRectF(bx + 90, by + 58, 156, 22), Qt.AlignLeft | Qt.AlignVCenter,
+        p.drawText(QRectF(bx + 90, by + 58, 156, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                    "Streams %s" % rec.get("stream_state", ""))
     # event banner
     fh = rec["frame_minutes"] / 60.0
@@ -529,17 +529,17 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
         tw = fm.horizontalAdvance(msg) if hasattr(fm, "horizontalAdvance") else fm.width(msg)
         r = QRectF((W - tw) / 2 - 16, 104, tw + 32, 32)
         p.setBrush(QBrush(QColor(20, 33, 27, 215)))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.drawRoundedRect(r, 16, 16)
         p.setPen(QColor(255, 255, 255))
-        p.drawText(r, Qt.AlignCenter, msg)
+        p.drawText(r, Qt.AlignmentFlag.AlignCenter, msg)
     # scale bar and north arrow (bottom-left of map)
     mupp = ext.width() / float(W)
     target = _nice(mupp * 160)
     px = target / mupp
     sx, sy = 70, 90 + map_h - 30
     p.setBrush(QBrush(QColor(255, 255, 255, 220)))
-    p.setPen(Qt.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
     p.drawRoundedRect(QRectF(sx - 12, sy - 26, px + 24, 42), 6, 6)
     p.setPen(QPen(ink, 1))
     p.setBrush(QBrush(ink))
@@ -548,18 +548,18 @@ def _decorate(p, W, H, map_h, rec, fr, row, start, ext, title, subtitle, prepare
     p.drawRect(QRectF(sx + px / 2, sy, px / 2, 6))
     p.setFont(QFont("Segoe UI", 8))
     lab = ("%g km" % (target / 1000.0)) if target >= 1000 else ("%g m" % target)
-    p.drawText(QRectF(sx, sy - 20, px, 16), Qt.AlignCenter, lab)
+    p.drawText(QRectF(sx, sy - 20, px, 16), Qt.AlignmentFlag.AlignCenter, lab)
     nx, ny = 34, 90 + map_h - 34
     p.setBrush(QBrush(QColor(255, 255, 255, 220)))
-    p.setPen(Qt.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
     p.drawRoundedRect(QRectF(nx - 16, ny - 28, 32, 54), 6, 6)
     p.setBrush(QBrush(ink))
-    p.setPen(Qt.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
     p.drawPolygon(QPolygonF([QPointF(nx, ny - 22), QPointF(nx - 9, ny + 8), QPointF(nx, ny + 2),
                              QPointF(nx + 9, ny + 8)]))
     p.setPen(ink)
     p.setFont(QFont("Segoe UI", 9, QFont.Bold))
-    p.drawText(QRectF(nx - 10, ny + 8, 20, 16), Qt.AlignCenter, "N")
+    p.drawText(QRectF(nx - 10, ny + 8, 20, 16), Qt.AlignmentFlag.AlignCenter, "N")
 
 
 def _caption(p, W, map_h, cap):
@@ -571,29 +571,29 @@ def _caption(p, W, map_h, cap):
     fb = QFont("Segoe UI", 11)
     fmb = QFontMetrics(fb)
     txt = cap.get("text") or ""
-    br = fmb.boundingRect(QRect(0, 0, int(w - 2 * pad), 400), int(Qt.TextWordWrap), txt)
+    br = fmb.boundingRect(QRect(0, 0, int(w - 2 * pad), 400), int(Qt.TextFlag.TextWordWrap), txt)
     h = 22 + br.height() + 2 * pad
     y0 = 90 + map_h - h - 14
-    p.setPen(Qt.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QBrush(QColor(16, 28, 22, 215)))
     p.drawRoundedRect(QRectF(x0, y0, w, h), 8, 8)
     p.setFont(ft)
     p.setPen(QColor(255, 212, 59))
-    p.drawText(QRectF(x0 + pad, y0 + pad - 2, w - 2 * pad, 22), Qt.AlignLeft | Qt.AlignVCenter, cap.get("title") or "")
+    p.drawText(QRectF(x0 + pad, y0 + pad - 2, w - 2 * pad, 22), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, cap.get("title") or "")
     p.setFont(fb)
     p.setPen(QColor(255, 255, 255))
-    p.drawText(QRectF(x0 + pad, y0 + pad + 22, w - 2 * pad, br.height() + 4), int(Qt.TextWordWrap | Qt.AlignLeft), txt)
+    p.drawText(QRectF(x0 + pad, y0 + pad + 22, w - 2 * pad, br.height() + 4), int(Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignLeft), txt)
 
 
 def _ramp_legend(p, x, y, w, label, ramp):
     p.setPen(QColor(91, 107, 99))
     p.setFont(QFont("Segoe UI", 9))
-    p.drawText(QRectF(x, y, w, 16), Qt.AlignLeft, label)
+    p.drawText(QRectF(x, y, w, 16), Qt.AlignmentFlag.AlignLeft, label)
     g = QLinearGradient(x, 0, x + w, 0)
     n = len(ramp)
     for i, s in enumerate(ramp):
         g.setColorAt(i / float(n - 1), QColor(s[1], s[2], s[3], max(s[4], 150)))
-    p.setPen(Qt.NoPen)
+    p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QBrush(g))
     p.drawRoundedRect(QRectF(x, y + 20, w, 12), 3, 3)
     p.setPen(QColor(91, 107, 99))
@@ -602,7 +602,7 @@ def _ramp_legend(p, x, y, w, label, ramp):
         if i % 2 and i != n - 1:
             continue
         xx = x + w * i / float(n - 1)
-        p.drawText(QRectF(xx - 20, y + 34, 40, 12), Qt.AlignCenter, "%g" % s[0])
+        p.drawText(QRectF(xx - 20, y + 34, 40, 12), Qt.AlignmentFlag.AlignCenter, "%g" % s[0])
 
 
 def _gif(paths, out, fps, log):
@@ -654,7 +654,7 @@ def _mp4(frame_dir, prefix, out, fps, log):
            "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-movflags", "+faststart", out]
     try:
         process = QProcess()
-        process.setProcessChannelMode(QProcess.MergedChannels)
+        process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         process.start(exe, cmd[1:])
         if not process.waitForStarted(10000):
             log("MP4 encoder did not start: %s" % process.errorString())

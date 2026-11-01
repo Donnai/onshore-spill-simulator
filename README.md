@@ -23,7 +23,7 @@ an output folder and run. The simulation panel also reads a study's
 QGIS/PyQGIS, NumPy and GDAL/OGR/OSR. Optional exporters: openpyxl for Excel,
 Pillow for GIFs, and ffmpeg or imageio-ffmpeg for MP4s.
 
-## Version 2.2.0
+## Version 2.2.1
 
 The public package contains synthetic example environmental values, generic
 methods and code only. No study boundary, well location, survey, receptor

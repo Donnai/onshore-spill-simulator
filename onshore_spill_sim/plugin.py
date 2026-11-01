@@ -75,7 +75,7 @@ class OnshoreSpillPlugin:
         if self.dock is None:
             from .sim_dock import SimulationDock
             self.dock = SimulationDock(self.iface)
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dock)
+            self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
             self.dock.visibilityChanged.connect(self.panel_action.setChecked)
         self.dock.setVisible(checked)
         if checked:

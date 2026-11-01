@@ -5,10 +5,11 @@ Each feature is one scenario.  Optional fields override the dialog values:
   name, volume_m3, product (key, e.g. DIESEL), release_min, month (1-12),
   start (YYYY-MM-DDTHH:MM), storms ('start h, dur h, mm; ...'), snap_m.
 """
+from .qgis_compat import SRC_POINT
 import os
 from qgis.core import (QgsProcessingParameterFeatureSource, QgsProcessingParameterBoolean,
-                       QgsProcessing, QgsProcessingException, QgsCoordinateTransform,
-                       QgsProject, QgsPointXY)
+                       QgsProcessingException, QgsCoordinateTransform, QgsProject,
+                       QgsPointXY)
 
 from .alg_simulate import SimulateSpillAlgorithm, _clean, PRODUCTS
 from .engine.oils import OILS
@@ -36,7 +37,7 @@ class TankerLayerAlgorithm(SimulateSpillAlgorithm):
         super().initAlgorithm(config)
         self.removeParameter("SOURCE")
         self.addParameter(QgsProcessingParameterFeatureSource(
-            "TANKERS", "Movable tanker points", [QgsProcessing.TypeVectorPoint]))
+            "TANKERS", "Movable tanker points", [SRC_POINT]))
         self.addParameter(QgsProcessingParameterBoolean("SELECTED", "Only the selected points", False))
         # tanker runs default to a tank release of diesel
         self.parameterDefinition("KIND").setDefaultValue(1)

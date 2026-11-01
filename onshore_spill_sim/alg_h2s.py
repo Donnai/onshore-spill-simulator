@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """Processing algorithm: H2S dispersion from a gas leakage at a well (Gaussian puff model)."""
+from .qgis_compat import SRC_ANY
 import os
-import re
 import tempfile
 
-from qgis.core import (QgsProcessing, QgsProcessingAlgorithm, QgsProcessingException,
-                       QgsProcessingParameterRasterLayer, QgsProcessingParameterPoint,
-                       QgsProcessingParameterEnum, QgsProcessingParameterNumber,
-                       QgsProcessingParameterString, QgsProcessingParameterFile,
-                       QgsProcessingParameterMultipleLayers, QgsProcessingParameterBoolean,
-                       QgsProcessingParameterFolderDestination, QgsProcessingParameterDefinition)
+from qgis.core import (QgsProcessingAlgorithm, QgsProcessingException, QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterPoint, QgsProcessingParameterEnum,
+                       QgsProcessingParameterNumber, QgsProcessingParameterString,
+                       QgsProcessingParameterFile, QgsProcessingParameterMultipleLayers,
+                       QgsProcessingParameterBoolean, QgsProcessingParameterFolderDestination,
+                       QgsProcessingParameterDefinition)
 from qgis.PyQt.QtGui import QIcon
 
 from .engine import climate
@@ -71,7 +71,7 @@ class H2SAlgorithm(QgsProcessingAlgorithm):
         P(QgsProcessingParameterString("START", "Start date and time (YYYY-MM-DDTHH:MM)", "2027-01-15T18:00",
                                        optional=True))
         P(QgsProcessingParameterMultipleLayers("RECEPTORS", "Receptor layers (towns, camps, muster points...)",
-                                               QgsProcessing.TypeVectorAnyGeometry, optional=True))
+                                               SRC_ANY, optional=True))
         P(QgsProcessingParameterNumber("ZONE", "Planned H2S zone radius to compare with (m, 0 = none)",
                                        QgsProcessingParameterNumber.Double, 310.0, minValue=0))
         P(QgsProcessingParameterBoolean("ANIMATE", "Render GIF / MP4 from the visible project layers", True))

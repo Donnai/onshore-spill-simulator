@@ -92,7 +92,7 @@ def build(rec, ts_path, receptors, threshold=None, log=print):
     rows = rec["stats"] if h2s else rec["mass_balance"]
     frames = rec["frames"]
     settle = [r for r in receptors if is_settlement(r.get("type"))]
-    others = [r for r in receptors if not is_settlement(r.get("type"))]
+    [r for r in receptors if not is_settlement(r.get("type"))]
     storms = rec.get("storms") or []
     dur = rec.get("duration_h")
     kind = rec.get("kind")

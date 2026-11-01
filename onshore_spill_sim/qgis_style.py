@@ -5,8 +5,7 @@ import os
 
 from qgis.core import (QgsProject, QgsRasterLayer, QgsVectorLayer, QgsColorRampShader,
                        QgsRasterShader, QgsSingleBandPseudoColorRenderer, QgsCategorizedSymbolRenderer,
-                       QgsRendererCategory, QgsSymbol, QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol,
-                       QgsRuleBasedRenderer, QgsWkbTypes)
+                       QgsRendererCategory, QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsRuleBasedRenderer)
 from qgis.PyQt.QtGui import QColor
 
 from .engine import outputs

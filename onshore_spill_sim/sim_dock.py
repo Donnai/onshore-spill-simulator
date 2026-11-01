@@ -23,20 +23,19 @@ import math
 import os
 import queue
 import re
-import sys
 
 from qgis.core import (QgsApplication, QgsProject, QgsTask, QgsRasterLayer, QgsPointXY,
-                       QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle,
-                       QgsVectorLayer, QgsMessageLog, Qgis)
+                       QgsCoordinateTransform, QgsRectangle, QgsVectorLayer,
+                       QgsMessageLog, Qgis)
 from qgis.gui import QgsMapToolEmitPoint, QgsVertexMarker
-from qgis.PyQt.QtCore import Qt, QTimer, QDateTime, QDate, QTime, QObject, QEvent, pyqtSignal, QUrl
-from qgis.PyQt.QtGui import QColor, QFont, QDesktopServices
+from qgis.PyQt.QtCore import Qt, QTimer, QDateTime, QDate, QTime, QEvent, QUrl
+from qgis.PyQt.QtGui import QColor, QDesktopServices
 from qgis.PyQt.QtWidgets import (QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout,
                                  QTabWidget, QGroupBox, QLabel, QComboBox, QPushButton, QToolButton,
                                  QDoubleSpinBox, QSpinBox, QDateTimeEdit, QLineEdit, QCheckBox, QSlider,
                                  QProgressBar, QPlainTextEdit, QScrollArea, QStackedWidget, QFrame,
-                                 QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QInputDialog,
-                                 QMessageBox, QSizePolicy, QApplication, QProgressDialog, QAbstractItemView)
+                                 QTableWidget, QTableWidgetItem, QHeaderView, QInputDialog, QMessageBox,
+                                 QSizePolicy, QApplication, QProgressDialog, QAbstractItemView)
 
 from .engine import climate, study, outputs
 from .engine.oils import OILS
@@ -123,7 +122,7 @@ class CaptionOverlay(QFrame):
         self.title.setStyleSheet("color:#ffd43b;font-weight:bold;font-size:14px")
         self.wind = QLabel()
         self.wind.setStyleSheet("color:#c7d3cc;font-size:12px")
-        self.title.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         top.addWidget(self.clock)
         top.addSpacing(10)
         top.addWidget(self.title, 1)
@@ -190,7 +189,7 @@ class SimulationDock(QDockWidget):
         v = QVBoxLayout(w)
         v.setContentsMargins(6, 6, 6, 6)
         head = QLabel()
-        head.setTextFormat(Qt.RichText)
+        head.setTextFormat(Qt.TextFormat.RichText)
         head.setStyleSheet("background:%s;color:white;padding:8px 10px;border-bottom:3px solid %s;"
                            "font-size:13px" % (GREEN, GOLD))
         self.head = head
@@ -268,7 +267,7 @@ class SimulationDock(QDockWidget):
         f.addRow(h)
         self.season = QLabel()
         self.season.setWordWrap(True)
-        self.season.setTextFormat(Qt.RichText)
+        self.season.setTextFormat(Qt.TextFormat.RichText)
         self.season.setStyleSheet("background:#f3f6f4;border:1px solid #d9e0dc;border-left:4px solid %s;"
                                   "padding:7px;color:#14211b" % GOLD)
         f.addRow(self.season)
@@ -370,7 +369,7 @@ class SimulationDock(QDockWidget):
         self.hazard.currentIndexChanged.connect(self._hazard_changed)
         sc = QScrollArea()
         sc.setWidgetResizable(True)
-        sc.setFrameShape(QFrame.NoFrame)
+        sc.setFrameShape(QFrame.Shape.NoFrame)
         sc.setWidget(page)
         return sc
 
@@ -400,7 +399,7 @@ class SimulationDock(QDockWidget):
         self.date.setStyleSheet("color:#5b6b63")
         v.addWidget(self.clock)
         v.addWidget(self.date)
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.show_frame)
         v.addWidget(self.slider)
         h = QHBoxLayout()
@@ -443,7 +442,7 @@ class SimulationDock(QDockWidget):
         cl.addWidget(self.captext)
         v.addWidget(cap)
         self.stats = QLabel()
-        self.stats.setTextFormat(Qt.RichText)
+        self.stats.setTextFormat(Qt.TextFormat.RichText)
         self.stats.setWordWrap(True)
         v.addWidget(self.stats)
         h = QGridLayout()
@@ -485,10 +484,10 @@ class SimulationDock(QDockWidget):
         self.stable = QTableWidget(0, 6)
         self.stable.setHorizontalHeaderLabels(["Settlement", "Distance", "Direction", "District",
                                                "In the run being played", "Source"])
-        self.stable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.stable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.stable.horizontalHeader().setStretchLastSection(True)
-        self.stable.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.stable.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.stable.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.stable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.stable.cellDoubleClicked.connect(self._zoom_settlement)
         self.stable.verticalHeader().setVisible(False)
         v.addWidget(self.stable, 1)
@@ -1158,7 +1157,7 @@ class SimulationDock(QDockWidget):
                and not n.layer().name().startswith(("Spill - ", "H2S - "))]
         rj = os.path.join(self.play_dir, self.play_prefix + "_run.json")
         dlg = QProgressDialog("Drawing the animation frames from the visible layers...", "Cancel", 0, 100, self)
-        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setWindowModality(Qt.WindowModality.WindowModal)
         dlg.setMinimumDuration(0)
 
         class FB(object):
@@ -1241,7 +1240,7 @@ class SimulationDock(QDockWidget):
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 if c == 0:
-                    it.setData(Qt.UserRole, (s["x"], s["y"]))
+                    it.setData(Qt.ItemDataRole.UserRole, (s["x"], s["y"]))
                 if d < 1000:
                     it.setBackground(QColor(255, 230, 230))
                 elif d < 2000:
@@ -1256,7 +1255,7 @@ class SimulationDock(QDockWidget):
         it = self.stable.item(row, 0)
         if it is None:
             return
-        x, y = it.data(Qt.UserRole)
+        x, y = it.data(Qt.ItemDataRole.UserRole)
         p = self._to_canvas(QgsPointXY(x, y))
         r = 600.0
         if self.canvas.mapSettings().destinationCrs().isGeographic():

@@ -4,6 +4,7 @@
 The tool reads 00_Config/project_config.json beside the project file to find the DEM and
 the ground, river and receptor layers, so the Processing form opens already filled in.
 """
+from .qgis_compat import VT
 import json
 import os
 import re
@@ -11,7 +12,7 @@ import re
 from qgis.core import (QgsProject, QgsPointXY, QgsFeature, QgsGeometry, QgsCoordinateTransform,
                        QgsVectorLayer, QgsField)
 from qgis.gui import QgsMapToolEmitPoint, QgsVertexMarker
-from qgis.PyQt.QtCore import Qt, QVariant
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import (QDialog, QFormLayout, QLineEdit, QComboBox, QDoubleSpinBox,
                                  QCheckBox, QDialogButtonBox, QLabel, QVBoxLayout)
@@ -90,8 +91,8 @@ class TankerDialog(QDialog):
         lay.addWidget(self.heat)
         lay.addWidget(self.keep)
         lay.addWidget(self.direct)
-        bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        bb.button(QDialogButtonBox.Ok).setText("Run simulation")
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        bb.button(QDialogButtonBox.StandardButton.Ok).setText("Run simulation")
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
         lay.addWidget(bb)
@@ -110,7 +111,7 @@ class TankerTool(QgsMapToolEmitPoint):
         self.iface = iface
         super().__init__(iface.mapCanvas())
         self.marker = None
-        self.setCursor(Qt.CrossCursor)
+        self.setCursor(Qt.CursorShape.CrossCursor)
 
     def canvasReleaseEvent(self, e):
         canvas = self.iface.mapCanvas()
@@ -125,7 +126,7 @@ class TankerTool(QgsMapToolEmitPoint):
         self.marker.setCenter(pt)
         cfg = project_config()
         dlg = TankerDialog(self.iface.mainWindow(), pt, crs.authid(), cfg.get("tanker_defaults", {}))
-        if dlg.exec_() != QDialog.Accepted:
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         v = dlg.values()
         if v["keep"]:
@@ -146,9 +147,9 @@ class TankerTool(QgsMapToolEmitPoint):
             lyr = QgsVectorLayer("Point?crs=%s" % crs.authid(), TANKER_LAYER, "memory")
             QgsProject.instance().addMapLayer(lyr)
         names = [f.name() for f in lyr.fields()]
-        need = [("name", QVariant.String), ("volume_m3", QVariant.Double), ("product", QVariant.String),
-                ("release_min", QVariant.Double), ("month", QVariant.Int), ("start", QVariant.String),
-                ("storms", QVariant.String), ("snap_m", QVariant.Double)]
+        need = [("name", VT.String), ("volume_m3", VT.Double), ("product", VT.String),
+                ("release_min", VT.Double), ("month", VT.Int), ("start", VT.String),
+                ("storms", VT.String), ("snap_m", VT.Double)]
         add = [QgsField(n, t) for n, t in need if n not in names]
         if add:
             lyr.dataProvider().addAttributes(add)
@@ -197,7 +198,7 @@ class TankerTool(QgsMapToolEmitPoint):
         from qgis.core import QgsProcessingFeedback, Qgis
         from qgis.PyQt.QtWidgets import QProgressDialog, QApplication
         pd = QProgressDialog("Simulating the tanker spill...", "Cancel", 0, 100, self.iface.mainWindow())
-        pd.setWindowModality(Qt.WindowModal)
+        pd.setWindowModality(Qt.WindowModality.WindowModal)
         pd.setMinimumDuration(0)
 
         class FB(QgsProcessingFeedback):

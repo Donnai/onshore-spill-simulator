@@ -726,7 +726,7 @@ class Simulator(object):
 
     def _receptor_report(self):
         g = self.g
-        thr = self.sc.thickness_threshold_m
+        self.sc.thickness_threshold_m
         rad = self.sc.receptor_radius_m
         pen = self.F / self.pen_div                         # oil penetration depth (m)
         out = []

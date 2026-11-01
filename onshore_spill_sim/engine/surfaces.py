@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Build the surface-class raster from vector layers (later rules win)."""
 import numpy as np
-from osgeo import ogr, gdal
+from osgeo import ogr
 from .terrain import rasterize_layer
 
 # keyword rules applied to site-plan polygon names (case-insensitive)

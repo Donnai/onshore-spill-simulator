@@ -9,7 +9,7 @@ import logging
 import heapq
 import math
 import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr
 
 # D8 neighbour offsets (row, col) and distance factors
 D8 = [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]

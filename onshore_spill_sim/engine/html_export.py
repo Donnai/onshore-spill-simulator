@@ -9,7 +9,6 @@ the spill frames and every vector layer are inside the file).
 import logging
 import base64
 import json
-import math
 import os
 from osgeo import ogr, osr
 
